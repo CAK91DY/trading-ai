@@ -116,3 +116,15 @@ class AuditLog(Base):
     timestamp: Mapped[float] = mapped_column(Float, default=now, index=True)
     event: Mapped[str] = mapped_column(String(80))
     details: Mapped[dict] = mapped_column(JSON, default=dict)
+
+
+class Strategy(Base):
+    __tablename__ = "strategies"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(80))
+    active: Mapped[bool] = mapped_column(default=True)
+    definition: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[float] = mapped_column(Float, default=now)

@@ -10,6 +10,7 @@ const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Markets = lazy(() => import('./pages/Markets'))
 const AssetExplorer = lazy(() => import('./pages/AssetExplorer'))
 const Watchlists = lazy(() => import('./pages/Watchlists'))
+const Strategies = lazy(() => import('./pages/Strategies'))
 const Backtesting = lazy(() => import('./pages/Backtesting'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Future = lazy(() => import('./pages/Future'))
@@ -47,20 +48,14 @@ export default function App() {
                     <Route path="assets" element={<Navigate to="/assets/AAPL" replace />} />
                     <Route path="assets/:symbol" element={<AssetExplorer />} />
                     <Route path="watchlists" element={<Watchlists />} />
+                    <Route path="strategies" element={<Strategies />} />
                     <Route path="backtesting" element={<Backtesting />} />
                     <Route path="settings" element={<Settings />} />
-                    {[
-                      'signals',
-                      'strategies',
-                      'paper-trading',
-                      'portfolio',
-                      'risk',
-                      'ai',
-                      'journal',
-                      '*',
-                    ].map((path) => (
-                      <Route key={path} path={path} element={<Future />} />
-                    ))}
+                    {['signals', 'paper-trading', 'portfolio', 'risk', 'ai', 'journal', '*'].map(
+                      (path) => (
+                        <Route key={path} path={path} element={<Future />} />
+                      ),
+                    )}
                   </Route>
                 </Route>
               </Routes>

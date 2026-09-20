@@ -102,7 +102,6 @@ export default function AppLayout() {
                     '/risk',
                     '/ai',
                     '/journal',
-                    '/strategies',
                   ].includes(path) && <span className="later-dot" title="Phase ultérieure" />}
                 </NavLink>
               ))}
@@ -141,7 +140,7 @@ export default function AppLayout() {
           <div className="header-actions">
             <span className="badge">
               <i />
-              Phases 1 & 2
+              Phase 3 · en cours
             </span>
             <Button variant="ghost" aria-label="Notifications" onClick={() => setAlerts(!alerts)}>
               <Bell size={18} />

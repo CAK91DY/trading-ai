@@ -223,3 +223,4 @@ node_modules/
 !.env.example
 
 work/
+.DS_Store

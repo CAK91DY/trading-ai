@@ -61,6 +61,7 @@ export type History = {
   points: Point[]
 }
 export type Run = {
+  strategy_snapshot?: Strategy | null
   symbol?: string
   currency?: string
   warmup_bars?: number
@@ -91,3 +92,18 @@ export type Run = {
   curve: { date: string; equity: number }[]
   trades: { date: string; side: string; price: number; quantity: number; fee: number }[]
 }
+
+export type Rule = {
+  indicator: 'ema_fast' | 'ema_slow' | 'rsi'
+  operator: '>' | '>=' | '<' | '<='
+  value: 'ema_fast' | 'ema_slow' | number
+}
+export type Definition = {
+  fast: number
+  slow: number
+  entry_mode: 'all' | 'any'
+  exit_mode: 'all' | 'any'
+  entry: Rule[]
+  exit: Rule[]
+}
+export type Strategy = { id: string; name: string; active: boolean; definition: Definition }

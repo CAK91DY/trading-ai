@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRuns } from '../hooks/data'
 import { api, post } from '../services/api'
-import type { Asset, Run } from '../types'
+import { StrategySummary } from '../components/StrategySummary'
+import type { Asset, Run, Strategy } from '../types'
 import { PageTitle, ErrorBox, Loading, Empty } from '../components/Feedback'
 import { Button } from '../components/ui/button'
 import { num } from '../utils/format'
@@ -18,6 +19,12 @@ import {
 } from 'recharts'
 export default function Backtesting() {
   const [search] = useSearchParams()
+  const strategies = useQuery({
+    queryKey: ['strategies'],
+    queryFn: () => api<Strategy[]>('/strategies'),
+  })
+  const [strategyId, setStrategyId] = useState(search.get('strategy') || '')
+  const strategy = strategies.data?.find((s) => s.id === strategyId)
   const assets = useQuery({ queryKey: ['assets'], queryFn: () => api<Asset[]>('/assets') })
   const [yesterday] = useState(() => new Date(Date.now() - 86400000).toISOString().slice(0, 10))
   const [mode, setMode] = useState<'market' | 'csv'>('market')
@@ -43,9 +50,12 @@ export default function Backtesting() {
   const mutation = useMutation({
     mutationFn: () =>
       post<Run>(mode === 'market' ? '/backtests/market' : '/backtests', {
-        ...(mode === 'market' ? { symbol, start, end } : { csv }),
+        ...(mode === 'market' ? { symbol, start, end, strategy_id: strategyId || null } : { csv }),
         name,
         ...params,
+        ...(mode === 'market' && strategy
+          ? { fast: strategy.definition.fast, slow: strategy.definition.slow }
+          : {}),
         allocation: params.allocation / 100,
       }),
     onSuccess: (r) => {
@@ -80,7 +90,9 @@ export default function Backtesting() {
         title="Backtesting"
         description="Testez une stratégie sur les historiques réels, avec des résultats privés et sauvegardés."
       />
-      <ErrorBox error={mutation.error || runs.error || assets.error || fileError} />
+      <ErrorBox
+        error={mutation.error || runs.error || assets.error || strategies.error || fileError}
+      />
       <section className="panel">
         <form
           onSubmit={(e: FormEvent) => {
@@ -92,10 +104,13 @@ export default function Backtesting() {
             <h2>Nouvelle expérience</h2>
             <span className="neutral-chip">SIMULATION · QUOTIDIEN</span>
           </div>
-          <p className="subtitle">
-            Achat si EMA rapide &gt; EMA lente à la clôture ; sortie sinon. Exécution à l’ouverture
-            suivante, sans levier. La dernière position est liquidée à la clôture finale.
-          </p>
+          {!(mode === 'market' && strategyId) && (
+            <p className="subtitle">
+              Achat si EMA rapide &gt; EMA lente à la clôture ; sortie sinon. Exécution à
+              l’ouverture suivante, sans levier. La dernière position est liquidée à la clôture
+              finale.
+            </p>
+          )}
           <label>
             Source des données
             <select value={mode} onChange={(e) => setMode(e.target.value as 'market' | 'csv')}>
@@ -148,6 +163,28 @@ export default function Backtesting() {
               />
             </label>
           )}
+          {mode === 'market' && (
+            <>
+              <label>
+                Stratégie
+                <select value={strategyId} onChange={(e) => setStrategyId(e.target.value)}>
+                  <option value="">EMA simple (paramètres ci-dessous)</option>
+                  {strategies.data?.map((s) => (
+                    <option key={s.id} value={s.id} disabled={!s.active}>
+                      {s.name}
+                      {!s.active ? ' — inactive' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {strategy && <StrategySummary definition={strategy.definition} />}
+              {!!strategyId && !strategy?.active && !strategies.isPending && (
+                <p className="error">
+                  Stratégie indisponible ou inactive. Choisissez une stratégie active.
+                </p>
+              )}
+            </>
+          )}
           <div className="form-grid">
             <label>
               Nom
@@ -158,23 +195,31 @@ export default function Backtesting() {
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
-            {Object.entries(params).map(([key, value]) => (
-              <label key={key}>
-                {labels[key as keyof typeof labels]}
-                <input
-                  type="number"
-                  step="any"
-                  required
-                  value={value}
-                  onChange={(e) => setParams((p) => ({ ...p, [key]: Number(e.target.value) }))}
-                />
-              </label>
-            ))}
+            {Object.entries(params)
+              .filter(
+                ([key]) => !(mode === 'market' && strategyId && ['fast', 'slow'].includes(key)),
+              )
+              .map(([key, value]) => (
+                <label key={key}>
+                  {labels[key as keyof typeof labels]}
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={value}
+                    onChange={(e) => setParams((p) => ({ ...p, [key]: Number(e.target.value) }))}
+                  />
+                </label>
+              ))}
           </div>
           <Button
             variant="default"
             type="submit"
-            disabled={(mode === 'csv' ? !csv : !assets.data?.length) || mutation.isPending}
+            disabled={
+              (mode === 'csv'
+                ? !csv
+                : !assets.data?.length || (!!strategyId && !strategy?.active)) || mutation.isPending
+            }
           >
             {mutation.isPending ? 'Calcul en cours…' : 'Lancer le backtest →'}
           </Button>
@@ -199,6 +244,12 @@ export default function Backtesting() {
                 {num(run.parameters.allocation * 100)} % · Frais {run.parameters.fee_bps} pb ·
                 Glissement {run.parameters.slippage_bps} pb
               </p>
+            )}
+            {run.strategy_snapshot && (
+              <>
+                <h3>Stratégie enregistrée : {run.strategy_snapshot.name}</h3>
+                <StrategySummary definition={run.strategy_snapshot.definition} />
+              </>
             )}
             {run.market_meta && (
               <p className="subtitle">

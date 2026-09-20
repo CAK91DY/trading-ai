@@ -17,13 +17,13 @@ Les appels au fournisseur de marché passent uniquement par le backend. `MarketP
 
 ## API
 
-OpenAPI est disponible à `/docs` sur le backend. `/api/auth` gère les comptes ; `/api/assets` les fiches/historiques ; `/api/markets` l’exploration ; `/api/watchlists` les listes privées ; `/api/backtests` les expériences CSV ; `/api/settings` le profil des connexions. Seul `/api/health` et le parcours initial d’authentification sont accessibles sans session.
+OpenAPI est disponible à `/docs` sur le backend. `/api/auth` gère les comptes ; `/api/assets` les fiches/historiques ; `/api/markets` l’exploration ; `/api/watchlists` les listes privées ; `/api/strategies` le constructeur de stratégies (EMA/RSI, sans code) ; `/api/backtests` les expériences CSV et marché, avec figement de la stratégie utilisée ; `/api/settings` le profil des connexions. Seul `/api/health` et le parcours initial d’authentification sont accessibles sans session.
 
 ## Frontières des phases
 
 Phase 1 : socle, comptes, base, conteneurs, navigation et dashboard initial.
 Phase 2 : marchés, historiques, indicateurs, graphiques et watchlists.
-Phase 3 : constructeur de stratégies, moteur de signaux et validation quantitative complète.
+Phase 3 (en cours) : constructeur de stratégies EMA/RSI livré (CRUD, activation, figement dans les backtests) ; moteur de signaux, comparaison de stratégies et validation hors échantillon restent à développer.
 Phase 4 : règles de risque indépendantes, ordres simulés, portefeuille, journal et arrêt d’urgence.
 Phase 5 : analyse IA côté backend. Phase 6 : exploitation et déploiement.
 

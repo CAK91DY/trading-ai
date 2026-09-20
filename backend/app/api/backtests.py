@@ -38,6 +38,7 @@ class BacktestRequest(Parameters):
 
 class MarketBacktestRequest(Parameters):
     symbol: str = Field(min_length=1, max_length=20)
+    strategy_id: str | None = Field(default=None, max_length=36)
     start: date
     end: date
 
@@ -64,6 +65,26 @@ def create_market(
     from app.services.markets import history as market_history
     from app.models.entities import AuditLog
 
+    snapshot = None
+    if body.strategy_id:
+        from app.api.strategies import owned, view
+
+        strategy = owned(db, user, body.strategy_id)
+        if not strategy.active:
+            raise HTTPException(422, "Activez cette stratégie avant de la tester.")
+        snapshot = view(strategy)
+    definition = snapshot["definition"] if snapshot else None
+    fast = definition["fast"] if definition else body.fast
+    slow = definition["slow"] if definition else body.slow
+    required = max(
+        slow,
+        15
+        if definition
+        and any(
+            r["indicator"] == "rsi" for r in definition["entry"] + definition["exit"]
+        )
+        else 0,
+    )
     asset = asset_or_404(db, body.symbol)
     try:
         data, meta = market_history(db, asset, "1d")
@@ -83,7 +104,7 @@ def create_market(
         raise HTTPException(
             422, "Au moins deux séances disponibles sont nécessaires dans la période."
         )
-    if start_index < body.slow:
+    if start_index < required:
         raise HTTPException(
             422,
             "Historique antérieur insuffisant pour initialiser les EMA. Choisissez un début plus récent ou une EMA lente plus courte.",
@@ -91,7 +112,12 @@ def create_market(
     result = run_backtest(
         rows,
         start_index=start_index,
-        **body.model_dump(exclude={"name", "symbol", "start", "end"}),
+        fast=fast,
+        slow=slow,
+        definition=definition,
+        **body.model_dump(
+            exclude={"name", "symbol", "start", "end", "strategy_id", "fast", "slow"}
+        ),
     )
     result.update(
         id=str(uuid4()),
@@ -99,8 +125,9 @@ def create_market(
         name=body.name,
         symbol=asset.symbol,
         currency=asset.currency,
-        parameters=body.model_dump(mode="json"),
-        strategy="ema_trend_v1",
+        parameters={**body.model_dump(mode="json"), "fast": fast, "slow": slow},
+        strategy_snapshot=snapshot,
+        strategy="rules_v1" if snapshot else "ema_trend_v1",
         start=rows[start_index]["date"],
         end=rows[-1]["date"],
         bars=len(rows) - start_index,

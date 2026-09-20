@@ -1,4 +1,4 @@
-# Trading AI — phases 1 et 2, premier parcours quantitatif
+# Trading AI — phases 1 et 2, phase 3 en cours
 
 Plateforme locale d’analyse des marchés, en français. React/TypeScript + FastAPI + PostgreSQL.
 
@@ -8,9 +8,10 @@ Plateforme locale d’analyse des marchés, en français. React/TypeScript + Fas
 - **Market Data** : catalogue de 18 actions/ETF, recherche, filtres, tri et pagination, historique réel Yahoo Finance, fiche actif et graphiques interactifs de 1D à 5Y.
 - **Indicateurs** : SMA20, EMA20/50, RSI14, MACD12/26/9, ATR14, bandes de Bollinger20 et volume, activables individuellement.
 - **Watchlists privées** : création, renommage, suppression, ajout/retrait d’actifs et cotations.
-- Le laboratoire EMA sur CSV existant est conservé avec des résultats privés par utilisateur. Il ne constitue pas la phase 3 complète.
+- **Constructeur de stratégies (début de phase 3)** : création, modification, duplication, activation/désactivation et suppression de règles combinant EMA rapide/lente et RSI14 (ET/OU), sans écrire de code. Une stratégie active peut être sélectionnée pour un backtest marché ; sa définition est figée dans le résultat (`strategy_snapshot`), indépendamment de modifications ultérieures.
+- Le laboratoire EMA sur CSV existant est conservé avec des résultats privés par utilisateur.
 
-Les futurs modules stratégies, signaux, risque, paper trading, portefeuille et IA sont identifiés comme indisponibles. Aucun broker ni ordre réel n’est connecté. Le dashboard laisse les données de portefeuille absentes au lieu de les inventer.
+Les futurs modules signaux, risque, paper trading, portefeuille et IA sont identifiés comme indisponibles. Aucun broker ni ordre réel n’est connecté. Le dashboard laisse les données de portefeuille absentes au lieu de les inventer.
 
 ## Démarrage avec Docker
 
@@ -91,7 +92,9 @@ Règle fixe et paramétrable : entrer long lorsque l’EMA rapide dépasse l’E
 
 Les données ajustées d’entrée, leur empreinte SHA-256, les paramètres, la source, l’état du cache et la version de stratégie sont figés dans chaque expérience. Les listes API omettent les données d’entrée volumineuses. Le Sharpe utilise les rendements quotidiens, un taux sans risque nul et 252 séances/an. Il est indéfini en l’absence de variabilité. Le profit factor utilise les gains/pertes nets des transactions clôturées et reste indéfini sans perte. Les métriques indéfinies apparaissent sous la forme « — ». L’annualisation est calculée uniquement pour une période d’au moins 365 jours.
 
-Le constructeur de règles combinées, la comparaison et la validation hors échantillon restent à développer. Ce premier parcours ne remplace pas les contrôles de risque et le paper trading de phase 4.
+`POST /api/backtests/market` accepte optionnellement `strategy_id` : les règles d’entrée/sortie de la stratégie active remplacent alors la simple croisée EMA, et sa définition est figée dans le résultat sous `strategy_snapshot`. La sortie est prioritaire si les conditions d’entrée et de sortie sont vraies simultanément.
+
+La comparaison de stratégies et la validation hors échantillon (Train/Test) restent à développer. Ce premier parcours ne remplace pas les contrôles de risque et le paper trading de phase 4.
 
 ## Laboratoire CSV conservé
 

@@ -14,6 +14,7 @@ def run_backtest(
     slippage_bps=5.0,
     allocation=0.2,
     start_index=0,
+    definition=None,
 ):
     if not 2 <= fast < slow < len(rows):
         raise ValueError("Périodes : 2 ≤ EMA rapide < EMA lente < nombre de séances.")
@@ -22,6 +23,13 @@ def run_backtest(
     fee, slip = fee_bps / 10000, slippage_bps / 10000
     closes = [r["close"] for r in rows]
     short, long = ema(closes, fast), ema(closes, slow)
+    if definition:
+        from app.strategies.rules import decisions
+
+        entries, exits = decisions(closes, definition)
+    else:
+        entries = [i >= slow - 1 and a > b for i, (a, b) in enumerate(zip(short, long))]
+        exits = [not value for value in entries]
     cash, units, entry_cost, fees = capital, 0.0, 0.0, 0.0
     trades, curve, outcomes = [], [], []
     equities = [capital]
@@ -30,8 +38,10 @@ def run_backtest(
         if i < start_index:
             continue
         # Only yesterday's completed candle may determine today's opening order.
-        signal = i >= slow and short[i - 1] > long[i - 1]
-        if signal and units == 0:
+        signal = i > 0 and entries[i - 1]
+        exit_signal = i > 0 and exits[i - 1]
+        # Explicit exits have priority if both conditions are true.
+        if signal and not exit_signal and units == 0:
             price = row["open"] * (1 + slip)
             units = position_size(cash, price, allocation, fee)
             commission = units * price * fee
@@ -47,7 +57,7 @@ def run_backtest(
                     "fee": commission,
                 }
             )
-        elif not signal and units:
+        elif exit_signal and units:
             price = row["open"] * (1 - slip)
             commission = units * price * fee
             proceeds = units * price - commission

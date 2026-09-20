@@ -67,3 +67,7 @@ app.include_router(backtests.router)
 from app.api import settings as settings_api
 
 app.include_router(settings_api.router)
+
+from app.api import strategies
+
+app.include_router(strategies.router)
