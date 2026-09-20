@@ -1,83 +1,91 @@
-# Trading AI
+# Trading AI — phases 1 et 2
 
-Laboratoire local de backtesting : React + TypeScript, FastAPI et PostgreSQL.
-Interface en français. Simulation uniquement : aucun courtier, ordre réel ou modèle IA connecté.
+Plateforme locale d’analyse des marchés, en français. React/TypeScript + FastAPI + PostgreSQL.
 
-## Démarrage Docker
+## Fonctionnalités livrées
+
+- **Foundation** : architecture modulaire, Docker Compose, migrations Alembic, inscription/connexion/déconnexion, récupération de mot de passe, profil et routes privées, navigation responsive et dashboard initial.
+- **Market Data** : catalogue de 18 actions/ETF, recherche, filtres, tri et pagination, historique réel Yahoo Finance, fiche actif et graphiques interactifs de 1D à 5Y.
+- **Indicateurs** : SMA20, EMA20/50, RSI14, MACD12/26/9, ATR14, bandes de Bollinger20 et volume, activables individuellement.
+- **Watchlists privées** : création, renommage, suppression, ajout/retrait d’actifs et cotations.
+- Le laboratoire EMA sur CSV existant est conservé avec des résultats privés par utilisateur. Il ne constitue pas la phase 3 complète.
+
+Les futurs modules stratégies, signaux, risque, paper trading, portefeuille et IA sont identifiés comme indisponibles. Aucun broker ni ordre réel n’est connecté. Le dashboard laisse les données de portefeuille absentes au lieu de les inventer.
+
+## Démarrage avec Docker
 
 Prérequis : Docker Desktop démarré.
 
 ```sh
 cp .env.example .env
-# Remplacer le mot de passe local dans .env (caractères URL-safe).
-docker compose up --build
+# Remplacer POSTGRES_PASSWORD par un mot de passe local aléatoire, URL-safe.
+docker compose up --build -d
 ```
 
-Interface : http://localhost:5173 — API : http://localhost:8000/docs.
-Les résultats persistent dans le volume PostgreSQL. `docker compose down` conserve ce volume.
-Les services ne sont exposés que sur l'interface locale. Aucune authentification : ne pas publier tel quel.
+Ouvrir **http://127.0.0.1:5173** puis créer son compte. API : http://127.0.0.1:8000/docs.
+Les migrations s’exécutent automatiquement au démarrage de l’API. Les trois services sont exposés uniquement sur la machine locale ; PostgreSQL écoute sur le port 55432.
 
-## Démarrage sans Docker (Mac)
+```sh
+docker compose ps
+docker compose logs --tail=50 backend
+docker compose down
+```
 
-Prérequis : Python 3.13+ et Node 22.12+.
+Les volumes `postgres_data` et `app_work` conservent les données après l’arrêt. Ne pas utiliser `down -v` pour un arrêt ordinaire : cette option supprime les volumes.
 
-Terminal 1, depuis la racine :
+## Sans Docker
+
+Prérequis : Python 3.13+ et Node 22.12+. Depuis la racine :
 
 ```sh
 python3 -m venv backend/.venv
 backend/.venv/bin/pip install -r backend/requirements.txt
 cd backend
+.venv/bin/alembic upgrade head
 .venv/bin/uvicorn app.api.main:app --host 127.0.0.1 --port 8000
 ```
 
-Terminal 2, depuis la racine :
+Dans un second terminal :
 
 ```sh
 cd frontend
 npm ci
-npm run dev
+npm run dev -- --host 127.0.0.1
 ```
 
-Ce mode utilise SQLite (`backend/trading.db`) sans changer le code applicatif. Docker utilise PostgreSQL via `DATABASE_URL`.
+Sans `DATABASE_URL`, le backend utilise SQLite dans son répertoire courant. Pour PostgreSQL local, définir l’URL commentée dans `.env.example` puis appliquer les migrations à cette base. Le frontend utilise le proxy `/api` de Vite ou Nginx.
 
-## Premier backtest
+## Mot de passe oublié
 
-1. Ouvrir Backtesting.
-2. Importer un CSV quotidien, ou charger la **démo synthétique** fournie.
-3. Choisir les périodes EMA, le capital, les frais, le glissement et l'allocation.
-4. Lancer le backtest : courbe, performance nette, drawdown, frais et journal sont enregistrés.
+Par défaut, `MAIL_MODE=file` écrit les messages de récupération dans `work/mail/*.eml`, sans envoyer d’e-mail. Avec Docker, ils sont dans le volume du backend, à `/app/work/mail`. Pour les consulter localement :
 
-Format CSV UTF-8, séparateur virgule, décimales avec un point :
-
-```csv
-date,open,close
-2025-01-02,100.20,101.30
-2025-01-03,101.40,100.80
+```sh
+mkdir -p work
+# Ces fichiers contiennent des liens privés : ne jamais les publier.
+docker compose cp backend:/app/work/mail ./work/mail
 ```
 
-Cet extrait décrit le format ; il faut plus de séances que la période lente (51 minimum avec EMA 50).
-Maximum 10 000 séances et 2 Mo. Dates ISO strictement croissantes, aucun doublon, prix positifs finis.
-Une seule devise ; open et close doivent être ajustés de façon cohérente. La source réelle est fournie par l'utilisateur : aucun téléchargement automatique de cotations dans V1.
-Le fichier `frontend/public/demo-synthetique.csv` contient des prix générés mathématiquement, pas des prix de marché. Ses résultats ne constituent aucune preuve de performance.
+Pour une livraison réelle, configurer `MAIL_MODE=smtp`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` et `SMTP_TLS` dans `.env`, puis recréer le backend. `FRONTEND_URL` doit correspondre à l’adresse ouverte dans le navigateur.
 
-## Modèle de calcul
+Les mots de passe sont hachés avec Argon2. La session utilise un cookie HttpOnly/SameSite et un jeton opaque dont seul le hash est stocké. Les liens de récupération sont limités dans le temps et à usage unique ; leur utilisation révoque les sessions. Les mutations vérifient l’origine et un en-tête anti-CSRF. Les listes et résultats sont isolés par utilisateur.
 
-EMA initialisée au premier cours, période de chauffe égale à la période lente.
-Signal long lorsque l'EMA rapide dépasse l'EMA lente. Ordre à l'ouverture suivante ; sortie à l'ouverture après inversion. La position finale est liquidée à la dernière clôture.
-Une seule position, fractions de titres, pas de levier. Allocation appliquée au cash disponible à chaque achat, frais inclus dans le budget. Frais et glissement défavorable à chaque exécution. Les dividendes ne sont pas versés séparément. Drawdown calculé sur le capital quotidien valorisé à la clôture, capital initial inclus.
-Pas encore de RSI, benchmark, validation hors échantillon, modélisation de liquidité ou limites de pertes. Aucune garantie de rentabilité.
+## Données et calculs
 
-## Structure
+L’adaptateur Yahoo Finance via yfinance télécharge des cours **ajustés**, sans clé API. Les cours ne sont pas garantis temps réel. Les dates, la source et un éventuel cache périmé sont affichés. Une panne sans cache produit une indisponibilité explicite, jamais de cours fictifs.
 
-- `frontend/src` : dashboard, configuration, journal, navigation et états vides des futurs modules.
-- `backend/app/api` : API REST et stockage SQLAlchemy.
-- `backend/app/market_data` : validation CSV.
-- `backend/app/strategies` : EMA.
-- `backend/app/backtesting` : simulation.
-- `backend/app/risk` : allocation sans emprunt.
-- `backend/app/ai`, `backend/app/brokers` : extensions documentées, non implémentées.
-- `database` : documentation du stockage.
-- `backend/tests` : calculs et API.
+- Historique quotidien jusqu’à 10 ans, affichage limité à la période choisie ; le catalogue initial est défini dans `backend/app/market_data/catalog.py`.
+- 1D : barres de 5 minutes de la dernière séance disponible. Les autres périodes utilisent les clôtures quotidiennes. Les heures sont affichées dans le fuseau du navigateur.
+- Cache SQL de 15 minutes pour les cours quotidiens, 1 minute pour l’intraday. Un rafraîchissement manuel demande une nouvelle récupération.
+- Les indicateurs sont calculés avant le découpage de la période, avec des valeurs nulles pendant leur initialisation. RSI/ATR suivent le lissage de Wilder ; les bandes utilisent un écart-type de population.
+- La volatilité affichée est l’écart-type des 30 derniers rendements quotidiens, annualisé sur 252 séances.
+
+Cet adaptateur sert au développement et à la recherche personnelle. Avant une offre SaaS, choisir un fournisseur et des droits de redistribution adaptés ; le catalogue initial ne couvre pas tout le marché.
+
+## Laboratoire CSV conservé
+
+CSV UTF-8, virgules, dates ISO croissantes et uniques, prix positifs finis : colonnes `date,open,close`. Maximum 10 000 séances et 2 Mo ; il faut plus de séances que la période EMA lente.
+
+Les signaux utilisent la clôture, les exécutions l’ouverture suivante, avec frais et glissement défavorable. Une seule position longue, fractions de titres, sans levier ; liquidation finale à la dernière clôture. L’utilisateur fournit des prix ajustés de façon cohérente. Les résultats historiques V1 sans propriétaire ne sont pas attribués automatiquement à un compte.
 
 ## Validation
 
@@ -86,13 +94,11 @@ cd backend
 .venv/bin/python -m pytest tests -q
 cd ../frontend
 npm ci
+npm test
 npm run build
 npm run lint
 ```
 
-Dépendances Python figées dans requirements.txt et JavaScript dans package-lock.json.
-La table est créée automatiquement pour V1 ; prévoir des migrations avant de modifier son schéma.
+Les tests couvrent l’authentification, les sessions et leur révocation, la récupération, l’isolation des comptes, les watchlists, les indicateurs, le cache et ses pannes, le moteur financier et la mise à jour de session React après connexion.
 
-## Étapes suivantes
-
-Import depuis un fournisseur historique documenté, benchmark, évaluation hors échantillon, puis paper trading et règles de risque supplémentaires. L'assistant IA expliquera les résultats ; il ne remplacera pas les règles d'exécution.
+Voir [architecture](docs/architecture.md) et [stockage](database/README.md). Les dépendances sont figées par `requirements.txt` et `package-lock.json`. Le déploiement hébergé, les sauvegardes, le monitoring et le durcissement de production restent en phase 6 ; pour HTTPS, activer notamment `SECURE_COOKIES=true`.

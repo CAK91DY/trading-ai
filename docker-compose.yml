@@ -5,18 +5,30 @@ services:
       POSTGRES_DB: trading
       POSTGRES_USER: trading
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: ["postgres_data:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trading -d trading"]
       interval: 5s
       timeout: 5s
       retries: 10
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       DATABASE_URL: postgresql+psycopg://trading:${POSTGRES_PASSWORD}@database:5432/trading
+      FRONTEND_URL: ${FRONTEND_URL:-http://127.0.0.1:5173}
+      SECURE_COOKIES: ${SECURE_COOKIES:-false}
+      MAIL_MODE: ${MAIL_MODE:-file}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@localhost}
+      SMTP_TLS: ${SMTP_TLS:-true}
     ports: ["127.0.0.1:8000:8000"]
+    volumes: ["app_work:/app/work"]
     depends_on:
       database:
         condition: service_healthy
@@ -26,3 +38,4 @@ services:
     depends_on: [backend]
 volumes:
   postgres_data:
+  app_work:

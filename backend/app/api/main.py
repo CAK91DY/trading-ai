@@ -1,56 +1,69 @@
-import os
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
-from uuid import uuid4
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
-from sqlalchemy import create_engine, MetaData, Table, Column, String, JSON, select
-from app.market_data.csv_data import parse_csv
-from app.backtesting.engine import run_backtest
+from sqlalchemy import select
+from app.core.config import settings
+from app.core.database import SessionLocal
+from app.api import auth, markets, watchlists, backtests
+from app.market_data.catalog import seed
 
-engine = create_engine(os.getenv("DATABASE_URL", "sqlite:///./trading.db"))
-metadata = MetaData()
-runs = Table("backtests", metadata, Column("id", String, primary_key=True), Column("created_at", String), Column("payload", JSON))
 
 @asynccontextmanager
 async def lifespan(app):
-    metadata.create_all(engine)
+    with SessionLocal() as db:
+        seed(db)
     yield
 
-app = FastAPI(title="Trading AI · Recherche", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["GET", "POST"], allow_headers=["Content-Type"])
 
-class BacktestRequest(BaseModel):
-    name: str = Field(default="Mon historique", min_length=1, max_length=80)
-    csv: str = Field(max_length=2_000_000)
-    capital: float = Field(default=10000, ge=100, le=1e9, allow_inf_nan=False)
-    fast: int = Field(default=20, ge=2, le=500)
-    slow: int = Field(default=50, ge=3, le=1000)
-    fee_bps: float = Field(default=10, ge=0, le=500, allow_inf_nan=False)
-    slippage_bps: float = Field(default=5, ge=0, le=500, allow_inf_nan=False)
-    allocation: float = Field(default=.2, gt=0, le=1, allow_inf_nan=False)
+app = FastAPI(title="Trading AI", version="0.2.0", lifespan=lifespan)
+origins = list(
+    set([settings.frontend_url, "http://localhost:5173", "http://127.0.0.1:5173"])
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "X-Requested-With"],
+)
+
+
+@app.middleware("http")
+async def protect_writes(request: Request, call_next):
+    if request.method in {"POST", "PATCH", "DELETE", "PUT"}:
+        if request.headers.get("x-requested-with") != "TradingAI":
+            return JSONResponse(
+                {"detail": "En-tête de protection CSRF absent."}, status_code=403
+            )
+        origin = request.headers.get("origin")
+        if origin and origin not in origins:
+            return JSONResponse({"detail": "Origine non autorisée."}, status_code=403)
+        length = request.headers.get("content-length", "0")
+        if not length.isdigit() or int(length) > 2_100_000:
+            return JSONResponse(
+                {"detail": "Requête trop volumineuse."}, status_code=413
+            )
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    if request.url.path.startswith("/api/auth"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 @app.get("/api/health")
 def health():
-    with engine.connect() as connection:
-        connection.execute(select(1))
-    return {"status": "ok", "mode": "simulation"}
+    with SessionLocal() as db:
+        db.execute(select(1))
+    return {"status": "ok", "mode": "simulation", "version": "0.2.0"}
 
-@app.get("/api/backtests")
-def history():
-    with engine.connect() as connection:
-        return [row.payload for row in connection.execute(select(runs).order_by(runs.c.created_at.desc()).limit(30))]
 
-@app.post("/api/backtests", status_code=201)
-def create_backtest(request: BacktestRequest):
-    try:
-        rows = parse_csv(request.csv)
-        result = run_backtest(rows, **request.model_dump(exclude={"name", "csv"}))
-    except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
-    result.update(id=str(uuid4()), created_at=datetime.now(timezone.utc).isoformat(), name=request.name,
-                  parameters=request.model_dump(exclude={"csv"}), start=rows[0]["date"], end=rows[-1]["date"], bars=len(rows))
-    with engine.begin() as connection:
-        connection.execute(runs.insert().values(id=result["id"], created_at=result["created_at"], payload=result))
-    return result
+app.include_router(auth.router)
+app.include_router(markets.router)
+app.include_router(watchlists.router)
+app.include_router(backtests.router)
+
+from app.api import settings as settings_api
+
+app.include_router(settings_api.router)

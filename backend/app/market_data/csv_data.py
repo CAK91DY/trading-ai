@@ -6,8 +6,12 @@ from datetime import date
 
 def parse_csv(text: str) -> list[dict]:
     reader = csv.DictReader(io.StringIO(text.lstrip("\ufeff")))
-    if not reader.fieldnames or not {"date", "open", "close"}.issubset(reader.fieldnames):
-        raise ValueError("Colonnes requises : date,open,close (prix dans une même devise).")
+    if not reader.fieldnames or not {"date", "open", "close"}.issubset(
+        reader.fieldnames
+    ):
+        raise ValueError(
+            "Colonnes requises : date,open,close (prix dans une même devise)."
+        )
     rows = []
     for row in reader:
         try:

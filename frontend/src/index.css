@@ -1,1 +1,145 @@
-*{box-sizing:border-box}body{margin:0;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0c1217;color:#e8eff1;font-size:14px}button,input{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:wait}button:focus-visible,input:focus-visible{outline:2px solid #6ce3bd;outline-offset:4px}button{color:inherit;background:transparent;border:1px solid #31404a;border-radius:8px;padding:11px 16px}p{line-height:1.7;color:#96a6b2}small{color:#8697a4}h2{font-size:18px;font-weight:550}h3{margin-top:30px}
+@import 'tailwindcss';
+:root {
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: #e5edef;
+  background: #0b1218;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+  --primary: #68deb8;
+  --border: #25343d;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  font-size: 13px;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button,
+a,
+input,
+select {
+  outline-offset: 4px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #71e9c4;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+h1,
+h2,
+h3,
+p {
+  margin-top: 0;
+}
+h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+h3 {
+  font-size: 14px;
+  font-weight: 550;
+}
+p {
+  color: #94a8b4;
+  line-height: 1.75;
+}
+small {
+  font-size: 11px;
+  color: #8298a7;
+}
+svg {
+  flex-shrink: 0;
+}
+label {
+  display: block;
+  font-size: 12px;
+  color: #b0c0c9;
+}
+input:not([type='checkbox']),
+select {
+  background: #0d171e;
+  border: 1px solid #324550;
+  border-radius: 7px;
+  padding: 11px 13px;
+  min-height: 41px;
+  color: #e4eef2;
+  width: 100%;
+}
+input::placeholder {
+  color: #667f8e;
+}
+input[type='checkbox'] {
+  accent-color: #6de1bb;
+  margin: 0;
+}
+label > input,
+label > select {
+  margin-top: 8px;
+}
+form label {
+  margin-bottom: 20px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+}
+td,
+th {
+  text-align: left;
+  padding: 18px 13px;
+  border-bottom: 1px solid #24333d;
+}
+th {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: #7f98a9;
+}
+td {
+  font-size: 12px;
+}
+td small {
+  display: block;
+  margin-top: 5px;
+}
+code {
+  color: #8fe1c8;
+}
+em {
+  font-style: normal;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

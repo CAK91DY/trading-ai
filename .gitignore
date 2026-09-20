@@ -221,3 +221,5 @@ node_modules/
 *.db
 .env.*
 !.env.example
+
+work/
