@@ -107,3 +107,23 @@ export type Definition = {
   exit: Rule[]
 }
 export type Strategy = { id: string; name: string; active: boolean; definition: Definition }
+
+export type RuleReading = Rule & { actual: number | null; passed: boolean }
+export type Signal = {
+  id: string
+  strategy_id: string | null
+  symbol: string
+  date: string
+  price: number
+  side: 'BUY' | 'SELL' | 'WAIT'
+  status: 'DETECTED' | 'RISK_REVIEW' | 'APPROVED' | 'REJECTED' | 'EXPIRED'
+  strategy_snapshot: Strategy
+  indicators: { ema_fast: number; ema_slow: number; rsi: number | null }
+  conditions: {
+    entry_mode: 'all' | 'any'
+    exit_mode: 'all' | 'any'
+    entry: RuleReading[]
+    exit: RuleReading[]
+  }
+  created_at: number
+}

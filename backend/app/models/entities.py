@@ -128,3 +128,24 @@ class Strategy(Base):
     active: Mapped[bool] = mapped_column(default=True)
     definition: Mapped[dict] = mapped_column(JSON)
     created_at: Mapped[float] = mapped_column(Float, default=now)
+
+
+class Signal(Base):
+    __tablename__ = "signals"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=uid)
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    strategy_id: Mapped[str | None] = mapped_column(
+        ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    symbol: Mapped[str] = mapped_column(ForeignKey("assets.symbol"), index=True)
+    date: Mapped[str] = mapped_column(String(10))
+    price: Mapped[float] = mapped_column(Float)
+    side: Mapped[str] = mapped_column(String(8))
+    status: Mapped[str] = mapped_column(String(16), default="DETECTED")
+    # Frozen so a later edit or deletion of the strategy never rewrites a past signal.
+    strategy_snapshot: Mapped[dict] = mapped_column(JSON)
+    indicators: Mapped[dict] = mapped_column(JSON)
+    conditions: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[float] = mapped_column(Float, default=now, index=True)

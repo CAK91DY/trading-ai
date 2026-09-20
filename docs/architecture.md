@@ -17,13 +17,13 @@ Les appels au fournisseur de marché passent uniquement par le backend. `MarketP
 
 ## API
 
-OpenAPI est disponible à `/docs` sur le backend. `/api/auth` gère les comptes ; `/api/assets` les fiches/historiques ; `/api/markets` l’exploration ; `/api/watchlists` les listes privées ; `/api/strategies` le constructeur de stratégies (EMA/RSI, sans code) ; `/api/backtests` les expériences CSV et marché, avec figement de la stratégie utilisée ; `/api/settings` le profil des connexions. Seul `/api/health` et le parcours initial d’authentification sont accessibles sans session.
+OpenAPI est disponible à `/docs` sur le backend. `/api/auth` gère les comptes ; `/api/assets` les fiches/historiques ; `/api/markets` l’exploration ; `/api/watchlists` les listes privées ; `/api/strategies` le constructeur de stratégies (EMA/RSI, sans code) ; `/api/signals` le moteur de signaux (lecture BUY/SELL/WAIT sur la dernière séance, figée par détection) ; `/api/backtests` les expériences CSV et marché, avec figement de la stratégie utilisée ; `/api/settings` le profil des connexions. Seul `/api/health` et le parcours initial d’authentification sont accessibles sans session.
 
 ## Frontières des phases
 
 Phase 1 : socle, comptes, base, conteneurs, navigation et dashboard initial.
 Phase 2 : marchés, historiques, indicateurs, graphiques et watchlists.
-Phase 3 (en cours) : constructeur de stratégies EMA/RSI livré (CRUD, activation, figement dans les backtests) ; moteur de signaux, comparaison de stratégies et validation hors échantillon restent à développer.
+Phase 3 (en cours) : constructeur de stratégies EMA/RSI et moteur de signaux livrés (CRUD, activation, détection BUY/SELL/WAIT figée) ; comparaison de stratégies et validation hors échantillon restent à développer. Le statut d’un signal reste `DETECTED` : les statuts `RISK_REVIEW`/`APPROVED`/`REJECTED` n’existeront qu’avec le Risk Engine de phase 4.
 Phase 4 : règles de risque indépendantes, ordres simulés, portefeuille, journal et arrêt d’urgence.
 Phase 5 : analyse IA côté backend. Phase 6 : exploitation et déploiement.
 

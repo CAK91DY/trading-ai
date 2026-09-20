@@ -95,14 +95,9 @@ export default function AppLayout() {
                 >
                   <Icon size={17} />
                   {label}
-                  {[
-                    '/signals',
-                    '/paper-trading',
-                    '/portfolio',
-                    '/risk',
-                    '/ai',
-                    '/journal',
-                  ].includes(path) && <span className="later-dot" title="Phase ultérieure" />}
+                  {['/paper-trading', '/portfolio', '/risk', '/ai', '/journal'].includes(path) && (
+                    <span className="later-dot" title="Phase ultérieure" />
+                  )}
                 </NavLink>
               ))}
             </div>
@@ -140,7 +135,7 @@ export default function AppLayout() {
           <div className="header-actions">
             <span className="badge">
               <i />
-              Phase 3 · en cours
+              Stratégies & Signaux · Phase 3
             </span>
             <Button variant="ghost" aria-label="Notifications" onClick={() => setAlerts(!alerts)}>
               <Bell size={18} />

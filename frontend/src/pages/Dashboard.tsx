@@ -9,7 +9,7 @@ import {
   Wallet,
 } from 'lucide-react'
 import { useSession } from '../hooks/session'
-import { useMarkets, useWatchlists, useRuns } from '../hooks/data'
+import { useMarkets, useWatchlists, useRuns, useSignals } from '../hooks/data'
 import { AssetTable } from '../components/AssetTable'
 import { PageTitle, ErrorBox, Loading } from '../components/Feedback'
 import { Button } from '../components/ui/button'
@@ -27,7 +27,8 @@ export default function Dashboard() {
   const { user } = useSession()
   const market = useMarkets('?page_size=4'),
     lists = useWatchlists(),
-    runs = useRuns()
+    runs = useRuns(),
+    signals = useSignals()
   const latest = runs.data?.[0]
   return (
     <>
@@ -85,7 +86,7 @@ export default function Dashboard() {
           <small>Aucun courtier connecté</small>
         </article>
       </div>
-      <ErrorBox error={market.error || runs.error || lists.error} />
+      <ErrorBox error={market.error || runs.error || lists.error || signals.error} />
       <div className="dashboard-grid">
         <section className="panel">
           <div className="panel-heading">
@@ -183,8 +184,20 @@ export default function Dashboard() {
         )}
       </section>
       <div className="three-grid">
+        <section className="panel future-card">
+          <h2>Recent Signals</h2>
+          {signals.data?.length ? (
+            <p>
+              {signals.data.length} signal{signals.data.length > 1 ? 'aux' : ''} détecté
+              {signals.data.length > 1 ? 's' : ''}. Dernier : {signals.data[0].symbol} —{' '}
+              {signals.data[0].side}.
+            </p>
+          ) : (
+            <p>Détectez un signal depuis une stratégie active.</p>
+          )}
+          <Link to="/signals">Voir le périmètre →</Link>
+        </section>
         {[
-          ['Recent Signals', 'Le moteur de signaux sera développé en phase 3.', '/signals'],
           ['Recent Trades', 'Les transactions paper seront disponibles en phase 4.', '/journal'],
           ['Risk Alerts', 'Le contrôle des ordres sera activé avec le paper trading.', '/risk'],
         ].map(([title, description, url]) => (

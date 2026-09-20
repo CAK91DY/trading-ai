@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api, post } from '../services/api'
-import type { Watchlist, MarketPage, Asset, History, Run } from '../types'
+import type { Watchlist, MarketPage, Asset, History, Run, Signal } from '../types'
 export const useMarkets = (query = '') =>
   useQuery({
     queryKey: ['markets', query],
@@ -23,6 +23,8 @@ export const useWatchlists = () =>
   useQuery({ queryKey: ['watchlists'], queryFn: () => api<Watchlist[]>('/watchlists') })
 export const useRuns = () =>
   useQuery({ queryKey: ['backtests'], queryFn: () => api<Run[]>('/backtests') })
+export const useSignals = () =>
+  useQuery({ queryKey: ['signals'], queryFn: () => api<Signal[]>('/signals') })
 export function useAddAsset() {
   const client = useQueryClient()
   return useMutation({

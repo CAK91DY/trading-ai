@@ -71,3 +71,7 @@ app.include_router(settings_api.router)
 from app.api import strategies
 
 app.include_router(strategies.router)
+
+from app.api import signals
+
+app.include_router(signals.router)

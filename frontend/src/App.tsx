@@ -11,6 +11,7 @@ const Markets = lazy(() => import('./pages/Markets'))
 const AssetExplorer = lazy(() => import('./pages/AssetExplorer'))
 const Watchlists = lazy(() => import('./pages/Watchlists'))
 const Strategies = lazy(() => import('./pages/Strategies'))
+const Signals = lazy(() => import('./pages/Signals'))
 const Backtesting = lazy(() => import('./pages/Backtesting'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Future = lazy(() => import('./pages/Future'))
@@ -49,13 +50,12 @@ export default function App() {
                     <Route path="assets/:symbol" element={<AssetExplorer />} />
                     <Route path="watchlists" element={<Watchlists />} />
                     <Route path="strategies" element={<Strategies />} />
+                    <Route path="signals" element={<Signals />} />
                     <Route path="backtesting" element={<Backtesting />} />
                     <Route path="settings" element={<Settings />} />
-                    {['signals', 'paper-trading', 'portfolio', 'risk', 'ai', 'journal', '*'].map(
-                      (path) => (
-                        <Route key={path} path={path} element={<Future />} />
-                      ),
-                    )}
+                    {['paper-trading', 'portfolio', 'risk', 'ai', 'journal', '*'].map((path) => (
+                      <Route key={path} path={path} element={<Future />} />
+                    ))}
                   </Route>
                 </Route>
               </Routes>

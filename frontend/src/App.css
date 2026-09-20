@@ -829,6 +829,21 @@ h1 {
   justify-content: space-between;
   margin-top: 8px;
 }
+.rule-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.signal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
 .auth-shell {
   min-height: 100vh;
   display: grid;

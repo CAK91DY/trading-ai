@@ -8,10 +8,11 @@ Plateforme locale d’analyse des marchés, en français. React/TypeScript + Fas
 - **Market Data** : catalogue de 18 actions/ETF, recherche, filtres, tri et pagination, historique réel Yahoo Finance, fiche actif et graphiques interactifs de 1D à 5Y.
 - **Indicateurs** : SMA20, EMA20/50, RSI14, MACD12/26/9, ATR14, bandes de Bollinger20 et volume, activables individuellement.
 - **Watchlists privées** : création, renommage, suppression, ajout/retrait d’actifs et cotations.
-- **Constructeur de stratégies (début de phase 3)** : création, modification, duplication, activation/désactivation et suppression de règles combinant EMA rapide/lente et RSI14 (ET/OU), sans écrire de code. Une stratégie active peut être sélectionnée pour un backtest marché ; sa définition est figée dans le résultat (`strategy_snapshot`), indépendamment de modifications ultérieures.
+- **Constructeur de stratégies (phase 3)** : création, modification, duplication, activation/désactivation et suppression de règles combinant EMA rapide/lente et RSI14 (ET/OU), sans écrire de code. Une stratégie active peut être sélectionnée pour un backtest marché ; sa définition est figée dans le résultat (`strategy_snapshot`), indépendamment de modifications ultérieures.
+- **Moteur de signaux (phase 3)** : à la demande, évalue une stratégie active sur la dernière séance disponible d’un actif et produit une lecture BUY/SELL/WAIT (« Détecter un signal »), avec le détail des conditions validées, les valeurs d’indicateurs utilisées et une copie figée de la stratégie. Chaque signal est enregistré avec le statut `DETECTED` — ni une recommandation, ni un ordre.
 - Le laboratoire EMA sur CSV existant est conservé avec des résultats privés par utilisateur.
 
-Les futurs modules signaux, risque, paper trading, portefeuille et IA sont identifiés comme indisponibles. Aucun broker ni ordre réel n’est connecté. Le dashboard laisse les données de portefeuille absentes au lieu de les inventer.
+Les futurs statuts de signal (`RISK_REVIEW`/`APPROVED`/`REJECTED`), le risque, le paper trading, le portefeuille et l’IA sont identifiés comme indisponibles. Aucun broker ni ordre réel n’est connecté. Le dashboard laisse les données de portefeuille absentes au lieu de les inventer.
 
 ## Démarrage avec Docker
 
@@ -96,6 +97,12 @@ Les données ajustées d’entrée, leur empreinte SHA-256, les paramètres, la 
 
 La comparaison de stratégies et la validation hors échantillon (Train/Test) restent à développer. Ce premier parcours ne remplace pas les contrôles de risque et le paper trading de phase 4.
 
+## Moteur de signaux
+
+Depuis Signals, choisissez une stratégie active et un actif du catalogue, puis « Détecter un signal ». `POST /api/signals/scan` relit la dernière séance quotidienne disponible, calcule l’EMA rapide/lente et le RSI14 (Wilder) sur cette séance, puis évalue les règles d’entrée et de sortie de la stratégie. La sortie est prioritaire si les deux groupes sont vrais, comme dans le moteur de backtesting. Sans condition vraie, le signal est `WAIT` ; historique insuffisant pour initialiser les indicateurs (EMA lente, ou 14 séances si le RSI est utilisé) renvoie une erreur explicite plutôt qu’un signal partiel.
+
+Chaque signal détecté est enregistré avec son statut (`DETECTED`), la définition figée de la stratégie, les valeurs d’indicateurs et le détail de chaque condition (validée ou non). Les statuts `RISK_REVIEW`, `APPROVED`, `REJECTED` et `EXPIRED` du cahier des charges n’existent pas encore : ils dépendent du Risk Engine et du paper trading de phase 4. Un signal n’est ni une recommandation ni un ordre ; l’historique est limité aux 50 signaux les plus récents par utilisateur.
+
 ## Laboratoire CSV conservé
 
 CSV UTF-8, virgules, dates ISO croissantes et uniques, prix positifs finis : colonnes `date,open,close`. Maximum 10 000 séances et 2 Mo ; il faut plus de séances que la période EMA lente.
@@ -114,6 +121,6 @@ npm run build
 npm run lint
 ```
 
-Les tests couvrent l’authentification, les sessions et leur révocation, la récupération, l’isolation des comptes, les watchlists, les indicateurs, le cache et ses pannes, le moteur financier et la mise à jour de session React après connexion.
+Les tests couvrent l’authentification, les sessions et leur révocation, la récupération, l’isolation des comptes, les watchlists, les indicateurs, le cache et ses pannes, le moteur financier, le constructeur de stratégies, le moteur de signaux et la mise à jour de session React après connexion.
 
 Voir [architecture](docs/architecture.md) et [stockage](database/README.md). Les dépendances sont figées par `requirements.txt` et `package-lock.json`. Le déploiement hébergé, les sauvegardes, le monitoring et le durcissement de production restent en phase 6 ; pour HTTPS, activer notamment `SECURE_COOKIES=true`.
