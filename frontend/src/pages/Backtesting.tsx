@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRuns } from '../hooks/data'
-import { post } from '../services/api'
-import type { Run } from '../types'
+import { api, post } from '../services/api'
+import type { Asset, Run } from '../types'
 import { PageTitle, ErrorBox, Loading, Empty } from '../components/Feedback'
 import { Button } from '../components/ui/button'
 import { num } from '../utils/format'
@@ -16,11 +17,20 @@ import {
   CartesianGrid,
 } from 'recharts'
 export default function Backtesting() {
+  const [search] = useSearchParams()
+  const assets = useQuery({ queryKey: ['assets'], queryFn: () => api<Asset[]>('/assets') })
+  const [yesterday] = useState(() => new Date(Date.now() - 86400000).toISOString().slice(0, 10))
+  const [mode, setMode] = useState<'market' | 'csv'>('market')
+  const [symbol, setSymbol] = useState(search.get('symbol') || 'AAPL')
+  const [start, setStart] = useState(() =>
+    new Date(Date.now() - 2 * 365 * 86400000).toISOString().slice(0, 10),
+  )
+  const [end, setEnd] = useState(yesterday)
   const runs = useRuns(),
     client = useQueryClient()
   const [selected, setSelected] = useState<Run | null>(null),
     [csv, setCsv] = useState(''),
-    [name, setName] = useState(''),
+    [name, setName] = useState('EMA Momentum'),
     [fileError, setFileError] = useState<Error | null>(null)
   const [params, setParams] = useState({
     capital: 10000,
@@ -32,7 +42,12 @@ export default function Backtesting() {
   })
   const mutation = useMutation({
     mutationFn: () =>
-      post<Run>('/backtests', { csv, name, ...params, allocation: params.allocation / 100 }),
+      post<Run>(mode === 'market' ? '/backtests/market' : '/backtests', {
+        ...(mode === 'market' ? { symbol, start, end } : { csv }),
+        name,
+        ...params,
+        allocation: params.allocation / 100,
+      }),
     onSuccess: (r) => {
       setSelected(r)
       void client.invalidateQueries({ queryKey: ['backtests'] })
@@ -40,7 +55,7 @@ export default function Backtesting() {
   })
   const run = selected ?? runs.data?.[0]
   const labels = {
-    capital: 'Capital initial',
+    capital: 'Capital initial (devise de l’actif / du CSV)',
     fast: 'EMA rapide',
     slow: 'EMA lente',
     fee_bps: 'Frais (points de base)',
@@ -61,11 +76,11 @@ export default function Backtesting() {
   return (
     <>
       <PageTitle
-        eyebrow="LABORATOIRE EXISTANT · PHASE 3 À ÉTENDRE"
+        eyebrow="LABORATOIRE QUANTITATIF · STRATÉGIE EMA"
         title="Backtesting"
-        description="Le moteur EMA de la première version reste disponible, avec des résultats privés par compte."
+        description="Testez une stratégie sur les historiques réels, avec des résultats privés et sauvegardés."
       />
-      <ErrorBox error={mutation.error || runs.error || fileError} />
+      <ErrorBox error={mutation.error || runs.error || assets.error || fileError} />
       <section className="panel">
         <form
           onSubmit={(e: FormEvent) => {
@@ -75,20 +90,64 @@ export default function Backtesting() {
         >
           <div className="panel-heading">
             <h2>Nouvelle expérience</h2>
-            <span className="neutral-chip">CSV QUOTIDIEN</span>
+            <span className="neutral-chip">SIMULATION · QUOTIDIEN</span>
           </div>
           <p className="subtitle">
-            Colonnes : date,open,close · Dates ISO croissantes · Prix ajustés dans une même devise.
+            Achat si EMA rapide &gt; EMA lente à la clôture ; sortie sinon. Exécution à l’ouverture
+            suivante, sans levier. La dernière position est liquidée à la clôture finale.
           </p>
-          <label className="upload">
-            Importer un historique
-            <input
-              type="file"
-              accept=".csv,text/csv"
-              required
-              onChange={(e) => void file(e.target.files?.[0])}
-            />
+          <label>
+            Source des données
+            <select value={mode} onChange={(e) => setMode(e.target.value as 'market' | 'csv')}>
+              <option value="market">Historique de marché réel</option>
+              <option value="csv">Importer un CSV</option>
+            </select>
           </label>
+          {mode === 'market' ? (
+            <div className="form-grid">
+              <label>
+                Actif
+                <select value={symbol} onChange={(e) => setSymbol(e.target.value)} required>
+                  {assets.data?.map((a) => (
+                    <option key={a.symbol} value={a.symbol}>
+                      {a.symbol} — {a.name} ({a.currency})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Début
+                <input
+                  type="date"
+                  required
+                  value={start}
+                  max={end}
+                  onChange={(e) => setStart(e.target.value)}
+                />
+              </label>
+              <label>
+                Fin
+                <input
+                  type="date"
+                  required
+                  value={end}
+                  min={start}
+                  max={yesterday}
+                  onChange={(e) => setEnd(e.target.value)}
+                />
+              </label>
+            </div>
+          ) : (
+            <label className="upload">
+              Importer un historique · colonnes date,open,close
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                required
+                onChange={(e) => void file(e.target.files?.[0])}
+              />
+            </label>
+          )}
           <div className="form-grid">
             <label>
               Nom
@@ -112,7 +171,11 @@ export default function Backtesting() {
               </label>
             ))}
           </div>
-          <Button variant="default" type="submit" disabled={!csv || mutation.isPending}>
+          <Button
+            variant="default"
+            type="submit"
+            disabled={(mode === 'csv' ? !csv : !assets.data?.length) || mutation.isPending}
+          >
             {mutation.isPending ? 'Calcul en cours…' : 'Lancer le backtest →'}
           </Button>
         </form>
@@ -121,12 +184,41 @@ export default function Backtesting() {
         <Loading />
       ) : run ? (
         <>
+          <section className="panel">
+            <h2>
+              {run.name}
+              {run.symbol ? ` · ${run.symbol} · ${run.currency}` : ' · CSV'}
+            </h2>
+            <p>
+              {run.start} → {run.end} · {run.bars} séances simulées
+            </p>
+            {run.parameters && (
+              <p className="subtitle">
+                EMA {run.parameters.fast} / {run.parameters.slow} · Capital{' '}
+                {num(run.parameters.capital)} {run.currency ?? ''} · Allocation{' '}
+                {num(run.parameters.allocation * 100)} % · Frais {run.parameters.fee_bps} pb ·
+                Glissement {run.parameters.slippage_bps} pb
+              </p>
+            )}
+            {run.market_meta && (
+              <p className="subtitle">
+                {run.market_meta.source} · {run.market_meta.adjustment} · {run.warmup_bars} séances
+                d’initialisation antérieures au test. Données figées avec le résultat ; aucun cours
+                temps réel requis.
+              </p>
+            )}
+            {run.market_meta?.warning && <p className="error">{run.market_meta.warning}</p>}
+          </section>
           <section className="metric-grid four">
             {[
               ['Capital final', num(run.final_equity)],
               ['Rendement', num(run.return_pct) + ' %'],
               ['Drawdown', num(run.max_drawdown_pct) + ' %'],
               ['Frais', num(run.fees)],
+              ['Transactions clôturées', String(run.completed_trades)],
+              ['Taux de réussite', num(run.win_rate_pct) + (run.win_rate_pct == null ? '' : ' %')],
+              ['Sharpe (taux sans risque nul)', num(run.sharpe_ratio ?? null)],
+              ['Profit factor', num(run.profit_factor ?? null)],
             ].map(([label, value]) => (
               <article className="metric" key={label}>
                 <label>{label}</label>
@@ -155,7 +247,11 @@ export default function Backtesting() {
             </div>
           </section>
           <section className="panel">
-            <h2>Transactions</h2>
+            <h2>Exécutions simulées</h2>
+            <p className="subtitle">
+              Un achat et sa vente constituent une transaction clôturée. Les frais sont inclus dans
+              les résultats. « — » indique une métrique non définie.
+            </p>
             <div className="table-scroll">
               <table>
                 <thead>
@@ -184,7 +280,7 @@ export default function Backtesting() {
       ) : (
         <section className="panel">
           <Empty title="Aucune expérience enregistrée">
-            <p>Importez votre historique pour lancer un premier backtest.</p>
+            <p>Choisissez un actif et une période pour lancer votre premier backtest.</p>
           </Empty>
         </section>
       )}

@@ -42,6 +42,11 @@ export default function AssetExplorer() {
           </Button>
         }
       />
+      <p>
+        <Link className="back-link" to={`/backtesting?symbol=${encodeURIComponent(symbol)}`}>
+          Tester une stratégie EMA sur {symbol} →
+        </Link>
+      </p>
       <ErrorBox error={asset.error} />
       {asset.isPending ? (
         <Loading />

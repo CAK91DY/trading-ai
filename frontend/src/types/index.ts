@@ -61,6 +61,22 @@ export type History = {
   points: Point[]
 }
 export type Run = {
+  symbol?: string
+  currency?: string
+  warmup_bars?: number
+  market_meta?: Meta
+  sharpe_ratio?: number | null
+  profit_factor?: number | null
+  annualized_return_pct?: number | null
+  parameters?: {
+    capital: number
+    fast: number
+    slow: number
+    fee_bps: number
+    slippage_bps: number
+    allocation: number
+  }
+
   id: string
   name: string
   start: string

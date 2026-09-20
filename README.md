@@ -1,4 +1,4 @@
-# Trading AI — phases 1 et 2
+# Trading AI — phases 1 et 2, premier parcours quantitatif
 
 Plateforme locale d’analyse des marchés, en français. React/TypeScript + FastAPI + PostgreSQL.
 
@@ -80,6 +80,18 @@ L’adaptateur Yahoo Finance via yfinance télécharge des cours **ajustés**, s
 - La volatilité affichée est l’écart-type des 30 derniers rendements quotidiens, annualisé sur 252 séances.
 
 Cet adaptateur sert au développement et à la recherche personnelle. Avant une offre SaaS, choisir un fournisseur et des droits de redistribution adaptés ; le catalogue initial ne couvre pas tout le marché.
+
+## Backtests sur historiques réels — début de phase 3
+
+Depuis Backtesting (ou le lien sur une fiche actif), choisir un actif, une période et les paramètres EMA. Le capital est exprimé dans la devise de l’actif, sans conversion de change. Les paramètres et les résultats restent privés et sont sauvegardés dans PostgreSQL.
+
+`POST /api/backtests/market` récupère l’historique quotidien ajusté et initialise les EMA sur les séances antérieures au début choisi. Ces séances ne déclenchent aucun ordre et ne font pas partie des métriques. Un historique d’initialisation insuffisant est refusé. La date de fin doit précéder aujourd’hui (UTC) pour éviter une séance en cours. Les dates effectives et le nombre de séances sont affichés ; les jours non cotés sont ignorés.
+
+Règle fixe et paramétrable : entrer long lorsque l’EMA rapide dépasse l’EMA lente, sortir dans le cas contraire ; décision sur la clôture précédente et exécution à l’ouverture suivante. Il s’agit d’une condition de tendance, pas uniquement d’un croisement. Les frais et le glissement s’appliquent aux deux côtés, et toute position finale est liquidée à la clôture.
+
+Les données ajustées d’entrée, leur empreinte SHA-256, les paramètres, la source, l’état du cache et la version de stratégie sont figés dans chaque expérience. Les listes API omettent les données d’entrée volumineuses. Le Sharpe utilise les rendements quotidiens, un taux sans risque nul et 252 séances/an. Il est indéfini en l’absence de variabilité. Le profit factor utilise les gains/pertes nets des transactions clôturées et reste indéfini sans perte. Les métriques indéfinies apparaissent sous la forme « — ». L’annualisation est calculée uniquement pour une période d’au moins 365 jours.
+
+Le constructeur de règles combinées, la comparaison et la validation hors échantillon restent à développer. Ce premier parcours ne remplace pas les contrôles de risque et le paper trading de phase 4.
 
 ## Laboratoire CSV conservé
 
